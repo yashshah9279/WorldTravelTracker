@@ -24,7 +24,7 @@ let users = [
   { id: 1, name: "Yash", color: "teal" },
   { id: 2, name: "Dev", color: "powderblue" },
 ];
-
+let error="";
 async function checkVisisted() {
   const result = await db.query(
     "SELECT country_code FROM visited_countries JOIN users ON users.id = user_id WHERE user_id = $1; ",
@@ -47,6 +47,16 @@ async function getCurrentUser() {
 app.get("/", async (req, res) => {
   const countries = await checkVisisted();
   const currentUser = await getCurrentUser();
+  if(error){
+    res.render("index.ejs", {
+      countries: countries,
+      total: countries.length,
+      users: users,
+      color: currentUser.color,
+      error: error
+    });
+    error="";
+  }
   res.render("index.ejs", {
     countries: countries,
     total: countries.length,
@@ -65,17 +75,24 @@ app.post("/add", async (req, res) => {
 
     const data = result.rows[0];
     const countryCode = data.country_code;
+    error="";
     try {
       await db.query(
         "INSERT INTO visited_countries (country_code, user_id) VALUES ($1, $2)",
         [countryCode, currentUserId]
       );
+      error="";
       res.redirect("/");
     } catch (err) {
       console.log(err);
+      error="country already exist";
+      res.redirect("/");
     }
   } catch (err) {
     console.log(err);
+    error="Country does not exist";
+    res.redirect("/");
+
   }
 });
 app.post("/user", async (req, res) => {
